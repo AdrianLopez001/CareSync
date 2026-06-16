@@ -3,9 +3,10 @@ package com.caresync.appointment.service;
 import com.caresync.appointment.dto.AppointmentRequest;
 import com.caresync.appointment.dto.AppointmentResponse;
 import com.caresync.appointment.entity.Appointment;
-import com.caresync.appointment.messaging.AppointmentEventPublisher;
+import com.caresync.appointment.exception.AppointmentNotFoundException;
 import com.caresync.appointment.messaging.AppointmentScheduledEvent;
 import com.caresync.appointment.repository.AppointmentRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,9 +16,9 @@ import java.util.List;
 public class AppointmentService {
 
     private final AppointmentRepository repository;
-    private final AppointmentEventPublisher eventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public AppointmentService(AppointmentRepository repository, AppointmentEventPublisher eventPublisher) {
+    public AppointmentService(AppointmentRepository repository, ApplicationEventPublisher eventPublisher) {
         this.repository = repository;
         this.eventPublisher = eventPublisher;
     }
@@ -32,15 +33,15 @@ public class AppointmentService {
 
         Appointment saved = repository.save(appointment);
 
-        // Event is published only after the transaction commits successfully
-        AppointmentScheduledEvent event = new AppointmentScheduledEvent(
+        // Published as a Spring event; forwarded to RabbitMQ only after DB commit
+        // via AppointmentTransactionalPublisher (@TransactionalEventListener AFTER_COMMIT)
+        eventPublisher.publishEvent(new AppointmentScheduledEvent(
                 saved.getId(),
                 saved.getPatientName(),
                 saved.getPatientEmail(),
                 saved.getDoctorName(),
                 saved.getScheduledAt()
-        );
-        eventPublisher.publishAppointmentScheduled(event);
+        ));
 
         return toResponse(saved);
     }
@@ -54,7 +55,7 @@ public class AppointmentService {
     public AppointmentResponse getAppointment(Long id) {
         return repository.findById(id)
                 .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("Appointment not found: " + id));
+                .orElseThrow(() -> new AppointmentNotFoundException(id));
     }
 
     private AppointmentResponse toResponse(Appointment a) {
