@@ -1,0 +1,32 @@
+### Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.class
+
+### Spring Boot
+HELP.md
+*.jar
+*.war
+
+### IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### VS Code
+.vscode/
+
+### Environment variables
+.env
+*.env
+
+### OS
+.DS_Store
+Thumbs.db
+
+### Logs
+*.log
+logs/
